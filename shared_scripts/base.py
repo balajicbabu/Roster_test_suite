@@ -21,16 +21,17 @@ import string
 class DriverInstance(object):
     global_driver = None # using singleton pattern to initiate the webdriver only once for running all the test cases
       
-    def __init__(self):
+    def __init__(self): # initialises the webdriver instance once 
         if DriverInstance.global_driver is None:
             DriverInstance.global_driver = webdriver.Firefox()
             DriverInstance.global_driver.implicitly_wait(30)
             DriverInstance.global_driver.get("http://www.hudl.com/")
         self.driver = DriverInstance.global_driver
+        self.driver.maximize_window()
         self.verificationErrors = []
         self.accept_next_alert = True
         
-    def login(self, username, password):
+    def test_login(self, username, password): #tests whether user can login using the right credentials
         login = WebDriverWait(self.driver, 3).until(EC.presence_of_element_located((By.XPATH, "html/body/header/section[1]/div/a")))
         login.click()
         self.driver.find_element_by_id("email").clear()
@@ -39,24 +40,24 @@ class DriverInstance(object):
         self.driver.find_element_by_id("password").send_keys(password)
         self.driver.find_element_by_id("logIn").click()
   
-    def test_roster_menu(self):
+    def test_roster_menu(self): # checks whether the manage roster page has been loaded
         self.driver.find_element_by_link_text("Team").click()
         self.driver.find_element_by_link_text("Roster").click()
         element = self.driver.find_element_by_xpath(".//*[@id='pageContent']/div[1]/div[1]/h1")
-        assert element.text == "Manage Roster", "Manage Roster Page has been loaded"
+        assert element.text == "Manage Roster", element.text
   
-    def test_export_roster(self):
+    def test_export_roster(self): # exports the roster data onto hard disk
         self.driver.find_element_by_id("export_roster").click()
         export_script_path = os.path.join(utils.get_cwd(), "resources\\AutoIt_Script_Export.exe")
-        os.system(export_script_path)
+        os.system(export_script_path) # calls autoscript (exe) file simulates the windows browser actions
       
-    def test_import_roster(self):
+    def test_import_roster(self): # imports the data onto roster's website.
         self.driver.find_element_by_id("upload_new_roster").click()
         self.driver.find_element_by_id("RosterFileUpload").click()
         import_script_path = os.path.join(utils.get_cwd(), "resources\\AutoIt_Script_Import.exe")
-        os.system(import_script_path)
+        os.system(import_script_path) # calls autoscript (exe) file simulates the windows browser actions
         
-    def test_validate_import_roster_data(self):
+    def test_validate_import_roster_data(self): # validates whether all the rows are imported
         athlete_count = 1
         upload_dialog = self.driver.find_element_by_id("upload_dialog")
         if upload_dialog.is_displayed():
@@ -78,7 +79,7 @@ class DriverInstance(object):
         page_reload = self.driver.find_element_by_link_text("Reload the page")
         page_reload.click()
         
-    def test_verify_athlete_detail(self, first_name, last_name, gmail_id):
+    def test_verify_athlete_detail(self, first_name, last_name, gmail_id): # checks whether the same athlete can be added twice
         # list of required field objects
         required_fields = ["first_name_validation","last_name_validation"]
         # dict of input fields key value pairs
@@ -98,7 +99,7 @@ class DriverInstance(object):
             else:
                 pass
     
-    def test_add_athlete(self, input_fields, add_athlete_button, first_name, last_name, gmail_id, i):
+    def test_add_athlete(self, input_fields, add_athlete_button, first_name, last_name, gmail_id, i): #adds the athlete onto roster database
         for input in input_fields:
             self.driver.find_element_by_id(input[0]).clear()
             self.driver.find_element_by_id(input[0]).send_keys(input[1])
@@ -119,7 +120,7 @@ class DriverInstance(object):
             self.driver.find_element_by_id("new_pos_SB").click()
         add_athlete_button.click()
         
-    def test_edit_athlete_details(self, athlete_id):
+    def test_edit_athlete_details(self, athlete_id): # edit roster details based on search result
         athlete_id = string.split(athlete_id, "_")
         athlete_data = [("edit_cell_number", "07514576987"), ("edit_home_number", "02056542589"), ("edit_street", "brent lane"),
                         ("edit_city", "London"), ("edit_state", "London"), ("edit_postal_code", "NW23 4TY"), ("edit_parents_name", "Hudl Test User"), 
@@ -152,17 +153,13 @@ class DriverInstance(object):
 #             notification = WebDriverWait(self.driver, 3).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.normal")))
 #             assert notification.text == "Huzzah! Check out your new picture.", notification.text
             
-    def test_search_athlete_detail(self, first_name, last_name, gmail_id):
+    def test_search_athlete_detail(self, first_name, last_name, gmail_id): # search 
         search_data = [first_name, last_name, gmail_id+"@gmail.com", "rb,sb", "2013", first_name+"."+last_name]
+        gmail_id = gmail_id+"@gmail.com"
         for data in search_data:
             self.driver.find_element_by_id("search").clear()
-            self.driver.find_element_by_id("search").send_keys(data)
-            if str(data) != gmail_id+"@gmail.com" or "rb,sb" or "2013":
-                print "Search results found: "+data
-            else:
-                no_players = self.driver.find_element_by_id("no_players")
-                assert no_players.text == "No athletes match your search ", no_players.text 
-        gmail_id = gmail_id+"@gmail.com" 
+            self.driver.find_element_by_id("search").send_keys(data)             
+         
         # Using javascript fucntion to get the athlete id of the search result 
         get_athlete_id_using_js = "var id_value; function myFunction(elem) {  for (i = 0; i < elem.length; i++) {   if (elem[i].innerHTML === '"+gmail_id+"') { id_value = elem[i].parentElement.parentNode.id; } } return id_value; } var elem = document.querySelectorAll('p.email'); return myFunction(elem);"
         athlete_id = self.driver.execute_script(get_athlete_id_using_js)
@@ -173,11 +170,37 @@ class DriverInstance(object):
         DriverInstance.test_edit_athlete_details(self, str(athlete_id))
         utils.mouse_move_over(athlete_id, ".//*[@id='"+str(athlete_id)+"']", self.driver)
         toggle_disabled_link = WebDriverWait(self.driver, 30).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#"+str(athlete_id)+" > div.edit > a.toggle_disabled_link")))
-        toggle_disabled_link.click()
-        self.driver.find_element_by_link_text("Enable").click()
+        toggle_disabled_link.click() # disables the athlete details
+        self.driver.find_element_by_link_text("Enable").click() # enables the athlete details
         utils.mouse_move_over(athlete_id, ".//*[@id='"+str(athlete_id)+"']", self.driver)
-        self.driver.find_element_by_xpath(".//*[@id='"+str(athlete_id)+"']/div[6]/a[3]/img").click()
+        self.driver.find_element_by_xpath(".//*[@id='"+str(athlete_id)+"']/div[6]/a[3]/img").click() # removes the athlete details from the team
         self.driver.find_element_by_id("delete_from_team").click()
 
+    def find_broken_links(self, root):
+        visited = set()
+        broken = set()
+        # Use queue for BFS, list / stack for DFS.
+        elements = [root]
+        session = requests.session()
+    
+        while len(elements):
+            el = elements.pop()
+            if el in visited:
+                continue
+    
+            visited.add(el)
+    
+            resp = session.get(el)
+            if resp.status_code in [500, 404]:
+                broken.add(el)
+                continue
+    
+            driver.get(el)
+            links = driver.find_element_by_tag_name("a")
+            for link in links:
+                elements.append(link.get_attribute('href'))
+    
+        return broken
+    
 if __name__ == "__main__":
     unittest.main()

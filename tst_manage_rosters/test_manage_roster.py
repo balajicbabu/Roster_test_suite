@@ -20,7 +20,7 @@ class ManageRostersWebPage(unittest.TestCase):
 #         
     def test_manage_roster(self):
         username, password, first_name, last_name, gmail_id = utils.read_credentials_from_config()
-        self.driver.login(username, password)
+        self.driver.test_login(username, password)
         self.driver.test_roster_menu()
         self.driver.test_export_roster()
         self.driver.test_import_roster()
